@@ -59,8 +59,6 @@ Imagine a big family tree:
 
 > AI ⊃ ML ⊃ DL ⊃ GenAI ⊃ Agentic AI
 
-![AI vs ML vs DL vs GenAI Hierarchy](https://miro.medium.com/v2/resize:fit:1400/1*oU9-CJlLyHnGKDhHbW1qVg.png)
-
 ---
 
 ### ⚔️ Traditional AI vs Generative AI
@@ -551,7 +549,6 @@ Step 3: Continue until vocabulary size reached
 - Emojis: 1-3 tokens
 - Code: usually efficient (keywords = 1 token)
 
-![Tokenisation Visual](https://huggingface.co/datasets/huggingface-course/documentation-images/resolve/main/en/chapter6/bpe_compression.svg)
 
 #### Why Token Count Matters for You as an Engineer
 
@@ -599,8 +596,6 @@ This shows embeddings capture **relationships** as directions in vector space:
 - The direction "man → woman" represents gender
 - The direction "king → queen" represents the same gender change
 - So king + (gender flip direction) = queen
-
-![Word Embeddings Vector Space](https://developers.google.com/static/machine-learning/crash-course/images/linear-relationships.svg)
 
 #### Cosine Similarity — How RAG Retrieval Works
 
@@ -866,8 +861,6 @@ This is the fundamental loop every agent runs:
 │                                         │
 └─────────────────────────────────────────┘
 ```
-
-![ReAct Agent Loop](https://miro.medium.com/v2/resize:fit:1400/1*P3DaQzRLx4e7t-XkR4DTGQ.png)
 
 ---
 
