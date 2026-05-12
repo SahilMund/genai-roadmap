@@ -22,32 +22,6 @@
 
 ---
 
-## ❓ About That NLP Curriculum (RNN / LSTM / GRU)
-
-> Your image shows: ML for NLP → DL → Simple RNN → ANN → End-to-End RNN → LSTM → LSTM & GRU → Bidirectional RNN → Encoder-Decoder → Attention → Transformers
-
-### What to Skip (For GenAI Engineering in 2026)
-| Topic | Verdict | Why |
-|---|---|---|
-| ML for NLP (TF-IDF, Naive Bayes, etc.) | ⛔ Skip | Legacy. Zero production GenAI usage. |
-| Simple RNN | ⛔ Skip | Replaced entirely by Transformers. Dead architecture. |
-| ANN Project Implementation | ⛔ Skip | Not relevant to LLM engineering. |
-| End-to-End RNN Project | ⛔ Skip | Zero job market value for GenAI roles. |
-| LSTM RNN In-Depth | ⛔ Know it exists | Understand it conceptually in 30 min — don't implement. |
-| LSTM & GRU Project | ⛔ Skip | Not used in any modern GenAI stack. |
-| Bidirectional RNN | ⛔ Skip | Interesting history lesson; not practical. |
-
-### What to Learn (From That Curriculum)
-| Topic | Verdict | Depth |
-|---|---|---|
-| Encoder-Decoder Architecture | ✅ Learn conceptually | 2 hrs — the pattern matters, not the LSTM code |
-| Attention Mechanism | ✅ Learn well | 4 hrs — this IS the foundation of every LLM |
-| Transformers | ✅ Learn deeply | 8–10 hrs — non-negotiable for every AI engineer |
-
-> **The truth:** RNNs/LSTMs were 2015–2020 era. Transformers made them obsolete. Spending 3 months on that curriculum means learning history, not engineering. Skip and move fast.
-
----
-
 ## 📊 Progress Tracker
 
 ```
@@ -56,7 +30,7 @@
 
 | # | Phase | Focus | Est. Hours | Status |
 |---|-------|-------|-----------|--------|
-| 0 | AI Foundations | Attention, Transformers, NLP Essentials | 25–35 hrs | [ ] |
+| 0 | AI Foundations | Attention, Transformers, NLP Essentials | 25–35 hrs | [x] |
 | 1 | LLM Engineering Core | APIs, Prompting, Structured Outputs, MCP | 45–60 hrs | [ ] |
 | 2 | RAG Systems | Chunking, Embeddings, Vector DBs, Eval | 70–90 hrs | [ ] |
 | 3 | FastAPI AI Backend | Async, Streaming, Sessions, Multi-model | 35–45 hrs | [ ] |
