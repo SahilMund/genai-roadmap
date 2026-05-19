@@ -1,0 +1,19 @@
+
+- topn: seed params to the llm
+- prompt santisation in both input and output + 
+guardrails to llm calls
+- seed: params to the llm
+- calc token for each query using tiktoken and show it in the UI
+```
+input_tokens = (
+    len(enc.encode(system_prompt)) +
+    len(enc.encode(user_message)) +
+    sum(len(enc.encode(m["content"])) for m in conversation_history)
+)
+output_tokens = 150  # estimate
+```
+- KV cache
+-- using instructor for auto-retry
+-- Full Pydantic v2 support — validators, computed fields
+- set timeout for llm api calls
+- retry for llm api calls with exponential backoff

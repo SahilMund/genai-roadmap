@@ -191,6 +191,152 @@ These parameters are on every LLM API call. Most engineers set them randomly. Kn
 - Never set both `temperature` and `top_p` to non-default at the same time — they interact unexpectedly
 - Always set `max_tokens` explicitly — default limits vary by provider and can surprise you
 
+In LLMs and text generation, **Top-k** and **Top-p (nucleus sampling)** are decoding strategies used to control randomness while generating the next token.
+
+---
+
+# Top-k Sampling
+
+The model:
+
+1. Predicts probabilities for all possible next tokens.
+2. Keeps only the **top K highest-probability tokens**.
+3. Randomly samples from those K tokens.
+
+Example:
+
+If probabilities are:
+
+| Token  | Prob |
+| ------ | ---- |
+| "cat"  | 0.40 |
+| "dog"  | 0.30 |
+| "fish" | 0.15 |
+| "bird" | 0.10 |
+| "tree" | 0.05 |
+
+### If `top_k = 2`
+
+Only:
+
+* cat (0.40)
+* dog (0.30)
+
+remain.
+
+The rest are discarded.
+
+So output becomes more focused.
+
+---
+
+# Top-p (Nucleus Sampling)
+
+Instead of fixed K tokens:
+
+1. Sort tokens by probability.
+2. Keep adding tokens until cumulative probability ≥ P.
+3. Sample from that subset.
+
+Example:
+
+Same probabilities:
+
+| Token | Prob | Cumulative |
+| ----- | ---- | ---------- |
+| cat   | 0.40 | 0.40       |
+| dog   | 0.30 | 0.70       |
+| fish  | 0.15 | 0.85       |
+| bird  | 0.10 | 0.95       |
+| tree  | 0.05 | 1.00       |
+
+### If `top_p = 0.8`
+
+Keep:
+
+* cat
+* dog
+* fish
+
+because cumulative becomes 0.85.
+
+Discard:
+
+* bird
+* tree
+
+---
+
+# Difference
+
+| Aspect         | Top-k                             | Top-p                 |
+| -------------- | --------------------------------- | --------------------- |
+| Selection size | Fixed                             | Dynamic               |
+| Control        | Simpler                           | Smarter/adaptive      |
+| Risk           | Can keep bad low probs if K large | Adjusts automatically |
+| Common usage   | Older                             | More common today     |
+
+---
+
+# Intuition
+
+* **Low top_k / low top_p** → deterministic, safe, repetitive
+* **High top_k / high top_p** → creative, diverse, sometimes chaotic
+
+---
+
+# Common Values
+
+| Parameter | Typical  |
+| --------- | -------- |
+| top_k     | 20–100   |
+| top_p     | 0.8–0.95 |
+
+---
+
+# In Practice
+
+Most modern LLM APIs use:
+
+* `temperature`
+* `top_p`
+
+more often than `top_k`.
+
+Typical setup:
+
+```python
+temperature = 0.7
+top_p = 0.9
+```
+
+---
+
+# Relationship with Temperature
+
+Temperature changes the probability distribution itself.
+
+$$
+P_i' = \frac{P_i^{1/T}}{\sum_j P_j^{1/T}}
+$$
+
+* Low temperature → sharper probabilities
+* High temperature → flatter probabilities
+
+Then top-k/top-p filter tokens afterward.
+
+---
+
+# Simple Analogy
+
+Imagine choosing food:
+
+* **Top-k** = “choose only from top 5 dishes”
+* **Top-p** = “choose dishes covering 90% popularity”
+
+Top-p adapts based on confidence of the model.
+
+
 ```python
 # Production classification prompt — deterministic
 response = client.chat.completions.create(
@@ -414,6 +560,192 @@ With Anthropic prompt caching:
              ↳ Charged at $0.30/1M (90% cheaper!)
 ```
 
+**KV cache itself is a core transformer inference optimization used by almost all LLM providers and inference engines**.
+
+But the confusing part is:
+
+> **“Provider-side reusable prompt caching across API requests”**
+> is NOT universally supported the same way.
+
+---
+
+# Two Different Things
+
+## 1. Runtime KV Cache (Everyone Has This)
+
+During a single generation request:
+
+* model computes attention keys/values
+* stores them in GPU memory
+* reuses them for next tokens
+
+Without this, autoregressive decoding would be impossibly slow.
+
+All major systems use it:
+
+* OpenAI
+* Anthropic
+* Google
+* Meta
+* Mistral AI
+* xAI
+* vLLM
+* TensorRT-LLM
+* TGI
+* llama.cpp
+
+This cache exists **inside one inference session**.
+
+---
+
+# 2. Persistent Prompt Cache Across Requests (Special Feature)
+
+This is what people usually mean in billing discussions.
+
+Example:
+
+You repeatedly send:
+
+```txt
+[Huge system prompt]
+[Docs]
+[RAG context]
+[User message]
+```
+
+Instead of recomputing the huge prefix every request:
+
+* provider stores KV tensors
+* future calls reuse them
+* cheaper + lower latency
+
+THIS is the feature not everyone exposes.
+
+---
+
+# Who Supports It Explicitly?
+
+## Anthropic
+
+One of the earliest and clearest implementations.
+
+Supports:
+
+* prompt caching
+* cache control
+* billing discounts for cached tokens
+
+Very explicit in API.
+
+Great for:
+
+* agents
+* long context apps
+* coding copilots
+
+---
+
+## Google (Gemini)
+
+Supports context caching too.
+
+Especially useful with:
+
+* large PDFs
+* videos
+* multimodal context
+* long enterprise prompts
+
+You can cache large contexts and reuse them.
+
+---
+
+## OpenAI
+
+Yes — newer APIs support prompt caching semantics internally and expose cached token billing on some models/endpoints.
+
+But historically:
+
+* OpenAI hid most caching implementation details
+* Anthropic marketed it more clearly
+
+So many people incorrectly assume OpenAI lacks it.
+
+---
+
+# Open Source Engines
+
+Open-source inference stacks also support advanced KV caching:
+
+| Engine       | KV Cache  |
+| ------------ | --------- |
+| vLLM         | Excellent |
+| TensorRT-LLM | Excellent |
+| llama.cpp    | Yes       |
+| TGI          | Yes       |
+
+Some even support:
+
+* prefix caching
+* paged attention
+* shared cache blocks
+* continuous batching
+
+---
+
+# Why This Matters Financially
+
+Suppose:
+
+* system prompt = 20k tokens
+* user message = 200 tokens
+* 1000 requests/day
+
+Without cache:
+
+* provider recomputes 20k every time
+
+With cache:
+
+* only computes once
+* massive GPU savings
+
+This is HUGE for:
+
+* AI agents
+* RAG
+* enterprise copilots
+* HR platforms
+* coding assistants
+
+---
+
+# Important Nuance
+
+KV cache is NOT:
+
+* model training
+* fine-tuning
+* memory
+* embeddings
+
+It is:
+
+* transformer attention state reuse
+
+---
+
+# Simplified Mental Model
+
+Instead of rereading the whole book every time:
+
+KV cache = bookmarking the important pages already processed.
+
+So next token generation starts from:
+
+> “I already understand everything before this point.”
+
+
 ```python
 # Anthropic prompt caching example
 import anthropic
@@ -437,6 +769,7 @@ response = client.messages.create(
 print(response.usage.cache_read_input_tokens)    # tokens from cache
 print(response.usage.cache_creation_input_tokens) # tokens cached this request
 ```
+
 
 ---
 
