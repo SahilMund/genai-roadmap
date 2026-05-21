@@ -1957,6 +1957,11 @@ Stack: Python MCP SDK (FastMCP), psycopg2, Docker (Postgres)
 ```
 
 ---
+## 📚 Learn More [MCP]
+
+- [Detailed MCP Concepts & Notes](https://github.com/SahilMund/genai-roadmap/blob/main/topics/phase-1/mcp.md)
+
+- [Expense Tracker MCP Server (GitHub Repo)](https://github.com/SahilMund/expense-tracker-mcp-server-basic)
 
 ## 📝 Interview Cheat Sheet
 
