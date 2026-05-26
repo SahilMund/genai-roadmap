@@ -2218,6 +2218,352 @@ Real-world combined:
 **MCP has won the standardisation battle. It is the USB-C of AI tools.**
 
 ---
+**production-grade authenticated MCP server** with OAuth/JWT security. [look here](https://github.com/techwithtim/AdvancedMCPServerWithAuth)
+---
+
+## 📁 File 1 — `database.py`
+
+### What it sets up
+
+```
+SQLite database
+    └── "notes" table
+            ├── id        (auto-increment primary key)
+            ├── user_id   (which user owns this note)
+            └── content   (the note text)
+```
+
+### Line by line
+
+```python
+engine = create_engine('sqlite:///database.db')
+```
+Creates a SQLite database file called `database.db` in the current directory. SQLAlchemy is the ORM — you write Python, it writes SQL.
+
+```python
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+```
+A **session factory** — every time you call `SessionLocal()` you get a fresh DB connection. `autocommit=False` means you must explicitly call `.commit()` to save changes.
+
+```python
+class Note(Base):
+    __tablename__ = "notes"
+    id      = Column(Integer, primary_key=True, index=True)
+    user_id = Column(String, nullable=False, index=True)
+    content = Column(Text, nullable=False)
+```
+Python class → SQL table mapping. The `index=True` on `user_id` means lookups by user are fast (important — you'll query by user_id constantly).
+
+```python
+Base.metadata.create_all(bind=engine)
+```
+Creates the table in the DB **if it doesn't exist yet**. Runs on import — safe to call multiple times.
+
+```python
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+A **FastAPI-style dependency injector** — yields a session, guarantees `.close()` even if an exception happens. Not actually used in this codebase (the Repository pattern is used instead), but kept for potential FastAPI integration.
+
+```python
+class NoteRepository:
+    @staticmethod
+    def get_notes_by_user(user_id: str) -> List[Note]:
+        db = SessionLocal()
+        try:
+            return db.query(Note).filter(Note.user_id == user_id).all()
+        finally:
+            db.close()
+```
+**Repository pattern** — all DB logic is centralised here. Creates its own session, queries, closes. The SQL equivalent is:
+```sql
+SELECT * FROM notes WHERE user_id = ?
+```
+
+```python
+    @staticmethod
+    def create_note(user_id: str, content: str) -> Note:
+        db = SessionLocal()
+        try:
+            note = Note(user_id=user_id, content=content)
+            db.add(note)
+            db.commit()
+            db.refresh(note)  # ← fetches the auto-generated id back from DB
+            return note
+        finally:
+            db.close()
+```
+Creates a note row. `db.refresh(note)` is important — after commit, the `id` field is populated from the DB, so you refresh the Python object to get it.
+
+---
+
+## 📁 File 2 — `server.py`
+
+### The Big Picture
+
+```
+Claude Desktop / any MCP client
+        │
+        │  Bearer token (JWT from Stytch)
+        ▼
+  FastMCP Server (HTTP transport, port 8000)
+        │
+        ├── validates JWT signature against Stytch JWKS
+        ├── extracts user_id from JWT claims
+        │
+        ├── tool: get_my_notes  ──▶  NoteRepository.get_notes_by_user(user_id)
+        └── tool: add_note      ──▶  NoteRepository.create_note(user_id, content)
+```
+
+This is a **multi-user, authenticated MCP server**. Each user's notes are isolated — user A can never see user B's notes.
+
+---
+
+### Authentication Setup
+
+```python
+auth = BearerAuthProvider(
+    jwks_uri=f"{os.getenv('STYTCH_DOMAIN')}/.well-known/jwks.json",
+    issuer=os.getenv("STYTCH_DOMAIN"),
+    algorithm="RS256",
+    audience=os.getenv("STYTCH_PROJECT_ID")
+)
+```
+
+**Stytch** is an auth-as-a-service provider (like Auth0). When a user logs in via Stytch, they get a **JWT (JSON Web Token)**.
+
+This `BearerAuthProvider` tells FastMCP:
+- **Where to get public keys** (`jwks_uri`) — Stytch publishes public keys at this URL so anyone can verify its tokens
+- **Who issued the token** (`issuer`) — must match the `iss` claim in the JWT
+- **What algorithm was used** (`RS256`) — RSA-based asymmetric signing (Stytch signs with private key, server verifies with public key)
+- **Who the token is for** (`audience`) — must match `aud` claim in JWT
+
+FastMCP automatically rejects any request without a valid JWT. Your tools never even run if auth fails.
+
+```
+Client sends request:
+  Authorization: Bearer eyJhbGci...  ← JWT token
+
+FastMCP intercepts:
+  1. Decodes JWT header → gets key ID
+  2. Fetches matching public key from JWKS endpoint
+  3. Verifies signature (was this really signed by Stytch?)
+  4. Checks issuer + audience + expiry
+  5. If valid → request proceeds to your tool
+  6. If invalid → 401 Unauthorized, tool never runs
+```
+
+---
+
+### The MCP Server
+
+```python
+mcp = FastMCP(name="Notes App", auth=auth)
+```
+
+Creates the MCP server with auth middleware attached. Every tool call is now authenticated.
+
+---
+
+### Tool 1 — `get_my_notes`
+
+```python
+@mcp.tool()
+def get_my_notes() -> str:
+    """Get all notes for a user"""
+    access_token: AccessToken = get_access_token()
+    user_id = jwt.get_unverified_claims(access_token.token)["sub"]
+    notes = NoteRepository.get_notes_by_user(user_id)
+    ...
+```
+
+**Step by step:**
+
+```
+get_access_token()
+    └── FastMCP dependency — retrieves the validated JWT from the request context
+        (FastMCP already verified it's valid — you just need the claims now)
+
+jwt.get_unverified_claims(access_token.token)["sub"]
+    └── Decodes the JWT payload WITHOUT re-verifying
+        Safe here because FastMCP already verified it above
+        "sub" = subject = the user's unique ID in Stytch
+        e.g. "user-live-abc123def456"
+
+NoteRepository.get_notes_by_user(user_id)
+    └── SQL: SELECT * FROM notes WHERE user_id = 'user-live-abc123def456'
+        Only this user's notes. Never another user's.
+```
+
+Note the tool takes **zero parameters** — the user identity comes from the JWT, not from user input. This is secure by design. A malicious user can't pass someone else's `user_id`.
+
+---
+
+### Tool 2 — `add_note`
+
+```python
+@mcp.tool()
+def add_note(content: str) -> str:
+    """Add a note for a user"""
+    access_token: AccessToken = get_access_token()
+    user_id = jwt.get_unverified_claims(access_token.token)["sub"]
+    note = NoteRepository.create_note(user_id, content)
+    return f"added note: {note.content}"
+```
+
+Same pattern — `user_id` comes from JWT, not from the user input. The user only provides `content`. They cannot forge notes for another user.
+
+---
+
+### OAuth Metadata Endpoint
+
+```python
+@mcp.custom_route("/.well-known/oauth-protected-resource", methods=["GET", "OPTIONS"])
+def oauth_metadata(request: StarletteRequest) -> JSONResponse:
+    base_url = str(request.base_url).rstrip("/")
+    return JSONResponse({
+        "resource": base_url,
+        "authorization_servers": [os.getenv("STYTCH_DOMAIN")],
+        "scopes_supported": ["read", "write"],
+        "bearer_methods_supported": ["header", "body"]
+    })
+```
+
+This is a **standard OAuth 2.0 Protected Resource Metadata** endpoint (RFC 9396). MCP clients that support OAuth discovery call this URL to learn:
+
+```
+"Who should I get a token from?"  →  authorization_servers: [Stytch URL]
+"How do I send the token?"        →  bearer_methods_supported: ["header"]
+"What permissions exist?"         →  scopes_supported: ["read", "write"]
+```
+
+Without this, MCP clients would have no automatic way to know which auth server to use. With it, a client can auto-discover the entire auth flow.
+
+---
+
+### Server Startup
+
+```python
+mcp.run(
+    transport="http",          # remote HTTP server (not stdio)
+    host="127.0.0.1",          # localhost only (put nginx/tunnel in front for prod)
+    port=8000,
+    middleware=[
+        Middleware(
+            CORSMiddleware,
+            allow_origins=["*"],      # allow any frontend origin
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
+    ]
+)
+```
+
+- **`transport="http"`** — runs as an HTTP server, not a subprocess (stdio). This means it can serve multiple concurrent clients over the network
+- **CORS middleware** — allows browser-based MCP clients to connect (without CORS, browsers block cross-origin requests)
+- **`host="127.0.0.1"`** — only accessible locally for now. In production you'd put Nginx or a cloud load balancer in front
+
+---
+
+## 🗺️ Full Flow — End to End
+
+```
+1. User logs in via Stytch in their browser
+        └── Gets JWT: eyJhbGciOiJSUzI1NiJ9...
+
+2. MCP client (Claude Desktop / custom client) sends request:
+   POST /mcp
+   Authorization: Bearer eyJhbGciOiJSUzI1NiJ9...
+   Body: {"jsonrpc":"2.0","method":"tools/call","params":{"name":"get_my_notes"}}
+
+3. FastMCP intercepts → BearerAuthProvider validates JWT
+        ├── Fetches Stytch public key from JWKS URI
+        ├── Verifies RS256 signature
+        ├── Checks issuer + audience + expiry
+        └── ✅ Valid → proceeds
+
+4. get_my_notes() runs
+        ├── get_access_token() → retrieves validated JWT from context
+        ├── jwt.get_unverified_claims()["sub"] → "user-live-abc123"
+        └── NoteRepository.get_notes_by_user("user-live-abc123")
+                └── SELECT * FROM notes WHERE user_id = 'user-live-abc123'
+
+5. Response sent back:
+   {"jsonrpc":"2.0","id":1,"result":{"content":[{"type":"text","text":"Your notes:\n1: Buy milk\n2: Call dentist"}]}}
+```
+
+---
+
+## 🔑 Key Patterns Being Used
+
+| Pattern | Where | Why |
+|---|---|---|
+| **Bearer JWT auth** | `BearerAuthProvider` | Industry standard, stateless, verifiable |
+| **JWKS validation** | `jwks_uri` | Never trust tokens without verifying the signature |
+| **Identity from JWT** | `jwt.get_unverified_claims()["sub"]` | User can't forge their own identity |
+| **Repository pattern** | `NoteRepository` | DB logic isolated, testable independently |
+| **OAuth metadata** | `/.well-known/oauth-protected-resource` | Auto-discovery for MCP OAuth clients |
+| **CORS middleware** | `CORSMiddleware` | Allow browser clients to connect |
+| **HTTP transport** | `transport="http"` | Multi-user remote server (vs stdio single-user local) |
+
+This is a solid pattern for any **multi-user production MCP server** — the same approach works for any per-user data (expenses, tasks, calendar, CRM records).
+
+---
+
+MCP is becoming the universal interface between AI agents and the outside world.
+But "build an MCP server" can mean seven very different things.
+
+## Here are the patterns I keep coming back to.
+
+- 𝟬𝟭 𝗧𝗼𝗼𝗹 𝗪𝗿𝗮𝗽𝗽𝗲𝗿
+→ One server, one service. Each API endpoint becomes one MCP tool.
+→ Use when you just need to give the agent a clean handle on a specific service.
+→ Think GitHub MCP, Slack MCP, Stripe MCP. This is where 90% of teams should start. Simple, debuggable, easy to version.
+
+- 𝟬𝟮 𝗥𝗲𝘀𝗼𝘂𝗿𝗰𝗲 𝗣𝗿𝗼𝘃𝗶𝗱𝗲𝗿
+→ Exposes data as MCP resources, not tools. The agent reads context, doesn't take action.
+→ Use when you want the model to pull files, docs, or database rows into its context window on demand.
+→ Tools mutate. Resources inform. Confusing the two is the most common MCP design mistake.
+
+- 𝟬𝟯 𝗔𝗴𝗴𝗿𝗲𝗴𝗮𝘁𝗼𝗿 𝗚𝗮𝘁𝗲𝘄𝗮𝘆
+→ One MCP server fronting many downstream services. Consolidates auth, rate limits, observability.
+→ Use when you have a dozen internal services and don't want a dozen separate MCP connections per client.
+→ The hidden value: one place to enforce policy, log every tool call, and rotate credentials.
+
+- 𝟬𝟰 𝗦𝘁𝗮𝘁𝗲𝗳𝘂𝗹 𝗦𝗲𝘀𝘀𝗶𝗼𝗻
+→ The server holds live state across tool calls. Browser sessions, DB transactions, file handles.
+→ Use when the agent needs continuity, like driving a browser or staying inside a SQL transaction.
+→ Think Playwright MCP, Postgres MCP. Powerful and expensive. Session expiry and cleanup are not optional.
+
+- 𝟬𝟱 𝗦𝗮𝗻𝗱𝗯𝗼𝘅 𝗘𝘅𝗲𝗰𝘂𝘁𝗼𝗿
+→ Isolated execution environment for code, shell commands, or filesystem operations.
+→ Use when the agent needs to run untrusted operations safely. Think E2B-style code interpreters and ephemeral containers.
+→ The MCP server is the trust boundary. Get that boundary wrong and everything inside it leaks out.
+
+- 𝟬𝟲 𝗪𝗼𝗿𝗸𝗳𝗹𝗼𝘄 𝗢𝗿𝗰𝗵𝗲𝘀𝘁𝗿𝗮𝘁𝗼𝗿
+→ Each tool wraps a multi-step internal workflow. The server orchestrates. The agent just calls.
+→ Use when the steps are deterministic and you don't want to burn tokens on the model reasoning through them.
+→ Anything you'd encode as a runbook belongs here, not in the agent's context window.
+
+- 𝟬𝟳 𝗦𝘂𝗯𝗮𝗴𝗲𝗻𝘁
+→ The MCP server is itself an agent. Claude calls another Claude, or a specialized model, for a delegated task.
+→ Use when a sub-task needs its own reasoning loop, its own tools, and isolation from the parent's context.
+→ Powerful for deep research, code review, and any task with a clean input-output contract.
+
+The pattern you pick is a design decision, not a default.
+
+Wrong pattern means wasted tokens, broken state, or a brittle agent that fills its context window with 40 tools it never needs and times out under load.
+
+Most teams default to Tool Wrapper for everything, then wonder why their agent stops picking the right tool once the count crosses 20.
+
+<img src="https://media.licdn.com/dms/image/v2/D4D22AQGc1oooiczTlQ/feedshare-shrink_800/B4DZ43Ave6I8Ac-/0/1779039402229?e=1781136000&v=beta&t=oBu0H6tkx7dXKObxh1IfIHNLJZaYvnP1dcnNJawvTyU" alt="top-7-mcp-server-patterns">
+
+---
 
 ## 📚 Resources & Links
 

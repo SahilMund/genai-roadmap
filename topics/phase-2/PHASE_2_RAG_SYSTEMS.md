@@ -68,6 +68,8 @@ RAG was introduced by Meta AI researchers (Lewis et al.) in 2020 and has since b
 
 ---
 
+[Why do we need RAG/fine tuning?](https://medium.com/@saqibbuzdar/why-do-we-need-rag-or-finetuning-llm-isnt-alone-sufficient-1201f46eed33)
+
 ### 🗺️ The Full RAG System — Two Pipelines
 
 ```
@@ -2419,6 +2421,7 @@ Run eval in CI/CD — fail build on regression
 | [RAG Evaluation Guide — Qdrant](https://qdrant.tech/blog/rag-evaluation-guide/) | Blog | 30 min | ⭐ Recommended |
 | [Microsoft GraphRAG](https://github.com/microsoft/graphrag) | GitHub | 1 hr | ⭐ Advanced |
 | [ChromaDB Quickstart](https://docs.trychroma.com/getting-started) | Docs | 30 min | ✅ Quick start |
+| [RAG Playground](https://rag-play.vercel.app) | Playground Link | 30 min | 🔥 Must-check
 
 ---
 

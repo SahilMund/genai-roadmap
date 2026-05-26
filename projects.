@@ -17,3 +17,25 @@ output_tokens = 150  # estimate
 -- Full Pydantic v2 support — validators, computed fields
 - set timeout for llm api calls
 - retry for llm api calls with exponential backoff
+
+
+-------------
+RAG THINGS:-
+
+* Query Rewriting
+* 🎯 Multi-Query Retrieval
+* 🗜️ Context Compression
+* How to handle multitenantcy in our rag app
+* Multi document Retrival
+* Metada rich ingestion
+* Metadata filtering
+* 🔁 Automated Eval in CI/CD
+* Should I use something like pinecone/quadrant for vector db
+
+——
+Later self correction RAG
+Graph rag
+
+Lets create a basic MVP setup, then will slowly add advanced things
+Lets replan the whole thing
+
