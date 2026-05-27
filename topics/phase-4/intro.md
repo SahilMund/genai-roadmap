@@ -10,7 +10,13 @@ Watch:
 
 ------------------------------------------------------------------------
 
-### 2. LangGraph
+### 2. RAG
+
+[Watch: RAG](https://www.youtube.com/watch?v=71MW5WeHdz8&t=11661s)
+
+------------------------------------------------------------------------
+
+### 3. LangGraph
 
 [Watch: LangGraph](https://www.youtube.com/watch?v=DtW_Lc9hYoU&t=21702s)
 
@@ -62,4 +68,4 @@ Focus: - Production integration - End-to-end completion
 
 ## Final Sequence
 
-LangChain → LangGraph → MD Reading → Revision → Projects → Repeat
+LangChain → LangGraph → MCP → MD Reading → Revision → Projects → Repeat
