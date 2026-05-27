@@ -31,10 +31,10 @@
 | # | Phase | Focus | Est. Hours | Status |
 |---|-------|-------|-----------|--------|
 | 0 | AI Foundations | Attention, Transformers, NLP Essentials | 25–35 hrs | [x] |
-| 1 | LLM Engineering Core | APIs, Prompting, Structured Outputs, MCP | 45–60 hrs | [ ] |
-| 2 | RAG Systems | Chunking, Embeddings, Vector DBs, Eval | 70–90 hrs | [ ] |
-| 3 | FastAPI AI Backend | Async, Streaming, Sessions, Multi-model | 35–45 hrs | [ ] |
-| 4 | Agentic AI | LangGraph, HITL, Multi-agent, MCP, Orchestration | 80–100 hrs | [ ] |
+| 1 | LLM Engineering Core | APIs, Prompting, Structured Outputs, MCP | 45–60 hrs | [x] |
+| 2 | RAG Systems | Chunking, Embeddings, Vector DBs, Eval | 70–90 hrs | [x] |
+| 3 | FastAPI AI Backend | Async, Streaming, Sessions, Multi-model | 35–45 hrs | [x] |
+| 4 | Agentic AI | LangGraph, HITL, Multi-agent, MCP, Orchestration | 80–100 hrs | [x] |
 | 5 | Design Patterns | Python GenAI patterns, Semantic Kernel, A2A | 30–40 hrs | [ ] |
 | 6 | Token Optimization | Cost reduction, Semantic caching, Model routing | 20–25 hrs | [ ] |
 | 7 | Cloud AI Platforms | Bedrock + Lambda + SageMaker + GCP ADK + K8s | 70–90 hrs | [ ] |
