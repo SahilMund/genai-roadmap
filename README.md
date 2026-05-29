@@ -6,7 +6,8 @@
 
 ---
 
-<img src="genai_roadmap_overview.svg" alt="gen_ai_roadmap">
+![system architecture](/assets/genai_roadmap_overview.svg)
+
 
 ## ⚡ Your Starting Advantage
 
