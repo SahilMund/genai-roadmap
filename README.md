@@ -1223,6 +1223,8 @@ Take your Phase 2 RAG chatbot and make it truly production-ready:
 ## 🎯 PHASE 12 — AIPM Fundamentals (20–25 hrs)
 > Not a career change — context that makes you a dramatically better AI engineer. Understanding the PM side means your projects solve real problems, your evals measure the right things, and you can influence product decisions.
 
+[Sheet Link for proper roadmap](https://docs.google.com/spreadsheets/d/11pYxJPAAzAmrIAgBJcl6DALjIsC-8rIPvRVICKCzlys/edit?gid=533084145#gid=533084145)
+
 ### 12.1 What AIPMs Do (and Why Engineers Should Know) (3 hrs) `Basic`
 - [ ] AIPM vs regular PM — what changes when the product is AI
 - [ ] The AIPM ↔ AI Engineer interface — where your work meets theirs daily
