@@ -1296,9 +1296,14 @@ COMBINE BOTH WHEN:
   ✅ Fine-tune for style + RAG for facts
   → Best of both worlds
   → Fine-tuned model knows how to respond; RAG provides what to say
-```
+``` 
 
 ### LoRA — Low-Rank Adaptation
+LoRA & QLoRA Resoruces
+
+[Basic understanding](https://www.youtube.com/watch?v=3LGw54I9FDs) 
+
+[Indepth Understanding](https://www.youtube.com/watch?v=cO6Ly7mIziQ)
 
 **Theory:**
 
@@ -1461,7 +1466,13 @@ training_data = [
             },
             {
                 "role":    "assistant",
-                "content": """I'll query the orders table to find top customers by revenue.
+                "content": """I'll query the orders table to find top customers by revenue.""",
+            },
+        ]
+    }
+    # ... more examples
+]
+```
 
 ```sql
 SELECT
@@ -1479,11 +1490,7 @@ LIMIT 10;
 
 This query joins customers with their orders, filters to Q3 2025,
 aggregates revenue per customer, and returns the top 10.""",
-            },
-        ]
-    },
-    # ... more examples
-]
+
 
 # Save as JSONL
 import json
@@ -1569,6 +1576,7 @@ trainer.train()
 model.save_pretrained("lora_adapters")
 tokenizer.save_pretrained("lora_adapters")
 # Adapter files are ~50-200MB (vs 14GB base model)
+
 ```
 
 ### Merge and Deploy
