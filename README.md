@@ -3,7 +3,7 @@
 > **Goal:** Production AI Engineer / LLM Systems Engineer  
 > **Strategy:** Real systems > theory. Build > Read. Ship > Plan.  
 > **Timeline:** ~10–12 months at 2–3 hrs/day weekdays, 4–5 hrs weekends
-
+    
 ---
 
 ![system architecture](/assets/genai_roadmap_overview.svg)
